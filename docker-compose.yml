@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - parkfinder_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongodb:27017/parkfinder
+      - PORT=5000
+    depends_on:
+      - mongodb
+    networks:
+      - parkfinder_network
+
+  park-service:
+    build:
+      context: ./microservice/park-service
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - NODE_ENV=development
+      - PARK_SERVICE_MONGO_URI=mongodb://mongodb:27017/parkfinder
+      - PARK_SERVICE_PORT=5001
+    depends_on:
+      - mongodb
+    networks:
+      - parkfinder_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:5000
+      - VITE_PARK_SERVICE_URL=http://park-service:5001
+    depends_on:
+      - backend
+      - park-service
+    networks:
+      - parkfinder_network
+
+networks:
+  parkfinder_network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
