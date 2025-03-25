@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost/parkfinder-backend-test');
+  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/parkfinder-backend-test');
 });
 
 afterAll(async () => {
