@@ -1,0 +1,148 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_REGISTRY = 'your-registry'
+        DOCKER_CREDENTIALS = 'docker-credentials-id'
+        KUBE_CONFIG = 'kubeconfig-credentials-id'
+        VERSION = "${env.BUILD_NUMBER}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            parallel {
+                stage('Backend') {
+                    steps {
+                        dir('backend') {
+                            sh 'npm install'
+                        }
+                    }
+                }
+                stage('Fee Calculator') {
+                    steps {
+                        dir('microservice/fee-calculator') {
+                            sh 'npm install'
+                        }
+                    }
+                }
+                stage('Park Service') {
+                    steps {
+                        dir('microservice/park-service') {
+                            sh 'npm install'
+                        }
+                    }
+                }
+                stage('Slot Finder') {
+                    steps {
+                        dir('microservice/slot-finder') {
+                            sh 'npm install'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Run Tests') {
+            parallel {
+                stage('Backend Tests') {
+                    steps {
+                        dir('backend') {
+                            sh 'npm test'
+                        }
+                    }
+                }
+                stage('Park Service Tests') {
+                    steps {
+                        dir('microservice/park-service') {
+                            sh 'npm test'
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Images') {
+            parallel {
+                stage('Backend Image') {
+                    steps {
+                        dir('backend') {
+                            script {
+                                docker.build("${DOCKER_REGISTRY}/parkfinder-backend:${VERSION}")
+                            }
+                        }
+                    }
+                }
+                stage('Fee Calculator Image') {
+                    steps {
+                        dir('microservice/fee-calculator') {
+                            script {
+                                docker.build("${DOCKER_REGISTRY}/fee-calculator:${VERSION}")
+                            }
+                        }
+                    }
+                }
+                stage('Park Service Image') {
+                    steps {
+                        dir('microservice/park-service') {
+                            script {
+                                docker.build("${DOCKER_REGISTRY}/park-service:${VERSION}")
+                            }
+                        }
+                    }
+                }
+                stage('Slot Finder Image') {
+                    steps {
+                        dir('microservice/slot-finder') {
+                            script {
+                                docker.build("${DOCKER_REGISTRY}/slot-finder:${VERSION}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                script {
+                    docker.withRegistry('https://' + DOCKER_REGISTRY, DOCKER_CREDENTIALS) {
+                        sh "docker push ${DOCKER_REGISTRY}/parkfinder-backend:${VERSION}"
+                        sh "docker push ${DOCKER_REGISTRY}/fee-calculator:${VERSION}"
+                        sh "docker push ${DOCKER_REGISTRY}/park-service:${VERSION}"
+                        sh "docker push ${DOCKER_REGISTRY}/slot-finder:${VERSION}"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withKubeConfig([credentialsId: KUBE_CONFIG]) {
+                    sh "kubectl apply -f k8s/"
+                    sh "kubectl set image deployment/backend-deployment backend=${DOCKER_REGISTRY}/parkfinder-backend:${VERSION}"
+                    sh "kubectl set image deployment/fee-calculator-deployment fee-calculator=${DOCKER_REGISTRY}/fee-calculator:${VERSION}"
+                    sh "kubectl set image deployment/park-service-deployment park-service=${DOCKER_REGISTRY}/park-service:${VERSION}"
+                    sh "kubectl set image deployment/slot-finder-deployment slot-finder=${DOCKER_REGISTRY}/slot-finder:${VERSION}"
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
