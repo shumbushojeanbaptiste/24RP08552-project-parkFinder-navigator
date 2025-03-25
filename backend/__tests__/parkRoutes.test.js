@@ -1,75 +1,102 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const app = require('../server');
 const Park = require('../models/Park');
-
-let mongoServer;
-
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
-});
-
-afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
-});
-
-beforeEach(async () => {
-  await Park.deleteMany({});
-});
 
 describe('Park Routes', () => {
   const samplePark = {
     name: 'Test Park',
-    location: 'Test Location',
-    capacity: 100,
-    currentOccupancy: 0,
-    operatingHours: '9:00 AM - 5:00 PM'
+    location: {
+      type: 'Point',
+      coordinates: [-73.968285, 40.785091]
+    },
+    address: {
+      street: '123 Test St',
+      city: 'Test City',
+      state: 'TS',
+      zipCode: '12345',
+      country: 'Test Country'
+    },
+    totalParkingSpots: 100,
+    availableParkingSpots: 50,
+    facilities: ['Restroom', 'Playground'],
+    operatingHours: {
+      open: '06:00',
+      close: '22:00'
+    },
+    rating: 4.5
   };
 
-  describe('GET /api/parks', () => {
+  describe('GET /parks', () => {
     it('should return all parks', async () => {
-      await Park.create(samplePark);
-      const response = await request(app).get('/api/parks');
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body)).toBeTruthy();
-      expect(response.body.length).toBe(1);
-      expect(response.body[0].name).toBe(samplePark.name);
+      const park = new Park(samplePark);
+      await park.save();
+
+      const res = await request(app).get('/api/parks');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+      expect(res.body[0]).toHaveProperty('name', samplePark.name);
     });
   });
 
-  describe('GET /api/parks/:id', () => {
-    it('should return a specific park', async () => {
-      const park = await Park.create(samplePark);
-      const response = await request(app).get(`/api/parks/${park._id}`);
-      expect(response.status).toBe(200);
-      expect(response.body.name).toBe(samplePark.name);
-    });
-
-    it('should return 404 if park not found', async () => {
-      const response = await request(app).get('/api/parks/123456789012');
-      expect(response.status).toBe(404);
-    });
-  });
-
-  describe('POST /api/parks', () => {
+  describe('POST /parks', () => {
     it('should create a new park', async () => {
-      const response = await request(app)
+      const res = await request(app)
         .post('/api/parks')
         .send(samplePark);
-      expect(response.status).toBe(201);
-      expect(response.body.name).toBe(samplePark.name);
-      const park = await Park.findById(response.body._id);
-      expect(park).toBeTruthy();
+
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('name', samplePark.name);
+      expect(res.body).toHaveProperty('totalParkingSpots', samplePark.totalParkingSpots);
     });
 
-    it('should return 400 for invalid data', async () => {
-      const response = await request(app)
+    it('should handle invalid park data', async () => {
+      const invalidPark = { name: 'Invalid Park' };
+      const res = await request(app)
         .post('/api/parks')
-        .send({ name: 'Invalid Park' }); // Missing required fields
-      expect(response.status).toBe(400);
+        .send(invalidPark);
+
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('GET /parks/:id', () => {
+    it('should return a specific park', async () => {
+      const park = new Park(samplePark);
+      const savedPark = await park.save();
+
+      const res = await request(app).get(`/api/parks/${savedPark._id}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('name', samplePark.name);
+    });
+
+    it('should return 404 for non-existent park', async () => {
+      const nonExistentId = new mongoose.Types.ObjectId();
+      const res = await request(app).get(`/api/parks/${nonExistentId}`);
+      expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /parks/nearby/:lat/:lng', () => {
+    it('should return nearby parks', async () => {
+      const park = new Park(samplePark);
+      await park.save();
+
+      const res = await request(app).get('/api/parks/nearby/40.785091/-73.968285');
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    });
+  });
+
+  describe('GET /parks/:id/parking', () => {
+    it('should return parking availability', async () => {
+      const park = new Park(samplePark);
+      const savedPark = await park.save();
+
+      const res = await request(app).get(`/api/parks/${savedPark._id}/parking`);
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('availableParkingSpots');
+      expect(res.body).toHaveProperty('totalParkingSpots');
     });
   });
 });

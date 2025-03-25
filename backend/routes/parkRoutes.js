@@ -12,6 +12,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get nearby parks based on location
+router.get('/nearby/:lat/:lng', async (req, res) => {
+  try {
+    const { lat, lng } = req.params;
+    const parks = await Park.find({
+      location: {
+        $near: {
+          $geometry: {
+            type: 'Point',
+            coordinates: [parseFloat(lng), parseFloat(lat)]
+          },
+          $maxDistance: 10000 // 10km radius
+        }
+      }
+    });
+    res.json(parks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get a specific park
 router.get('/:id', async (req, res) => {
   try {
@@ -30,7 +51,11 @@ router.post('/', async (req, res) => {
   try {
     const park = new Park(req.body);
     const newPark = await park.save();
-    res.status(201).json(newPark);
+    if (newPark) {
+      res.status(201).json(newPark);
+    } else {
+      res.status(400).json({ message: 'Failed to create park' });
+    }
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -96,8 +121,8 @@ router.get('/:id/parking', async (req, res) => {
     }
     res.json({
       name: park.name,
-      totalSpots: park.totalParkingSpots,
-      availableSpots: park.availableParkingSpots
+      availableParkingSpots: park.availableParkingSpots,
+      totalParkingSpots: park.totalParkingSpots
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
