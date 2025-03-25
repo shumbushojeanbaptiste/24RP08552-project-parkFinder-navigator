@@ -58,22 +58,15 @@ jobs:
         cache-to: type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/parkfinder-park-service:buildcache,mode=max
 
    
-    - name: Copy docker-compose file to server
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USERNAME }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        source: "docker-compose.yml"
-        target: "/app"
+  
 
-    - name: Deploy to Production
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USERNAME }}
-        key: ${{ secrets.DEPLOY_SSH_KEY }}
-        script: |
-          cd /app
-          docker-compose pull
-          docker-compose up -d
+    # - name: Deploy to Production
+    #   uses: appleboy/ssh-action@master
+    #   with:
+    #     host: ${{ secrets.DEPLOY_HOST }}
+    #     username: ${{ secrets.DEPLOY_USERNAME }}
+    #     key: ${{ secrets.DEPLOY_SSH_KEY }}
+    #     script: |
+    #       cd /app
+    #       docker-compose pull
+    #       docker-compose up -d
