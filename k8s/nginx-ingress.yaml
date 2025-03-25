@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: parkfinder-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: parkfinder.local
+    http:
+      paths:
+      - path: /api/parks
+        pathType: Prefix
+        backend:
+          service:
+            name: park-service
+            port:
+              number: 80
+      - path: /api/fees
+        pathType: Prefix
+        backend:
+          service:
+            name: fee-calculator
+            port:
+              number: 80
+      - path: /api/slots
+        pathType: Prefix
+        backend:
+          service:
+            name: slot-finder
+            port:
+              number: 80
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: backend-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - parkfinder.local
+    secretName: parkfinder-tls

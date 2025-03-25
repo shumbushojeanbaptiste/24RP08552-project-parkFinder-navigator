@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: park-service-deployment
+  labels:
+    app: park-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: park-service
+  template:
+    metadata:
+      labels:
+        app: park-service
+    spec:
+      containers:
+      - name: park-service
+        image: parkfinder/park-service:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "300m"
+            memory: "384Mi"
+          requests:
+            cpu: "150m"
+            memory: "192Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: park-service-config
+              key: DB_NAME
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: park-service
+spec:
+  selector:
+    app: park-service
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fee-calculator-deployment
+  labels:
+    app: fee-calculator
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fee-calculator
+  template:
+    metadata:
+      labels:
+        app: fee-calculator
+    spec:
+      containers:
+      - name: fee-calculator
+        image: parkfinder/fee-calculator:latest
+        ports:
+        - containerPort: 3001
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        env:
+        - name: BASE_RATE
+          valueFrom:
+            configMapKeyRef:
+              name: fee-calculator-config
+              key: BASE_RATE
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fee-calculator
+spec:
+  selector:
+    app: fee-calculator
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slot-finder-deployment
+  labels:
+    app: slot-finder
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: slot-finder
+  template:
+    metadata:
+      labels:
+        app: slot-finder
+    spec:
+      containers:
+      - name: slot-finder
+        image: parkfinder/slot-finder:latest
+        ports:
+        - containerPort: 3002
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slot-finder
+spec:
+  selector:
+    app: slot-finder
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3002
+  type: ClusterIP
