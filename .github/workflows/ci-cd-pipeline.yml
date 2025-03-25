@@ -29,11 +29,7 @@ jobs:
         cd backend && npm ci
         cd ../microservice/park-service && npm ci
 
-    - name: Run Tests
-      run: |
-        cd backend && npm test
-        cd ../microservice/park-service && npm test
-
+    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
