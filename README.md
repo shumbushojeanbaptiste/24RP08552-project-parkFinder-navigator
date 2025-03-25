@@ -29,6 +29,7 @@ ParkFinder Navigator is a microservices-based application designed to help users
 
 - Node.js (v14 or higher)
 - npm or yarn
+- MongoDB (v4.4 or higher)
 - Docker and Docker Compose
 - Kubernetes cluster (for production deployment)
 - Jenkins (for CI/CD)
@@ -39,8 +40,8 @@ ParkFinder Navigator is a microservices-based application designed to help users
 
 1. Clone the repository:
    ```bash
-   git clone [repository-url]
-   cd parkFinder-navigator
+   git clone https://github.com/0788644687/24RP08552-project-parkFinder-navigator
+   cd 24RP08552-project-parkFinder-navigator
    ```
 
 2. Install dependencies for each service:
@@ -129,14 +130,68 @@ Pipeline stages:
 - `GET /api/slots` - Get available parking slots
 - `GET /api/slots/:id` - Get specific slot details
 
+## Database Configuration
+
+### MongoDB Setup
+
+1. Local Development:
+   ```bash
+   # Start MongoDB service on your machine
+   # Default connection URL: mongodb://localhost:27017
+   ```
+
+2. Docker Environment:
+   ```yaml
+   # In docker-compose.yml
+   mongodb:
+     image: mongo:4.4
+     ports:
+       - "27017:27017"
+     volumes:
+       - mongodb_data:/data/db
+   ```
+
+3. Production Environment:
+   - Use MongoDB Atlas or self-hosted MongoDB
+   - Configure connection string in environment variables
+   - Ensure proper authentication and network security
+
+### Data Models
+
+```javascript
+// Park Schema
+{
+  id: String,
+  name: String,
+  location: {
+    latitude: Number,
+    longitude: Number
+  },
+  totalSlots: Number,
+  availableSlots: Number,
+  ratePerHour: Number
+}
+
+// Booking Schema
+{
+  id: String,
+  parkId: String,
+  slotNumber: Number,
+  startTime: Date,
+  endTime: Date,
+  status: String
+}
+```
+
 ## Environment Variables
 
 ```env
 # Backend Service
 PORT=3000
-DB_NAME=park_db
-DB_USER=user
-DB_PASSWORD=password
+MONGO_URI=mongodb://localhost:27017/parkfinder
+MONGO_DB_NAME=parkfinder
+MONGO_USER=user
+MONGO_PASSWORD=password
 
 # Fee Calculator
 PORT=3001
@@ -156,7 +211,3 @@ DOCKER_REGISTRY=your-registry
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
